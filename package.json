@@ -1,7 +1,7 @@
 {
-  "name": "xuexitong-copy-injector",
-  "version": "0.1.1",
-  "description": "基于TamperMonkey的超星学习通网页复制注入器，用以解除网页的禁止粘贴。",
+  "name": "xuexitong-paste-injector",
+  "version": "0.1.2",
+  "description": "基于TamperMonkey的超星学习通网页粘贴注入器，用以解除网页的禁止粘贴。",
   "main": "src/main.ts",
   "scripts": {
     "build": "tsc && node scripts/build-userjs.js",
