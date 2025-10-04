@@ -1,0 +1,20 @@
+{
+  "name": "xuexitong-copy-injector",
+  "version": "0.1.1",
+  "description": "基于TamperMonkey的超星学习通网页复制注入器，用以解除网页的禁止粘贴。",
+  "main": "src/main.ts",
+  "scripts": {
+    "build": "tsc && node scripts/build-userjs.js",
+    "tsc": "tsc"
+  },
+  "keywords": [
+    "tampermonkey",
+    "injector"
+  ],
+  "author": "Hazuki Keatsu",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.6.2",
+    "typescript": "^5.9.3"
+  }
+}
