@@ -20,36 +20,120 @@
     // 页面加载时立即禁用弹窗
     window.addEventListener("load", disablePopups);
 
-    // 直接注入内容到输入框
+    // 使用模拟输入在光标位置插入内容
     function injectContent() {
-        // 1. 使用监听器获取对应的 iframe id（调试使用）
-        window.addEventListener('focus', () => {
-            const active = document.activeElement;
-            if (active && active.tagName === 'IFRAME') {
-                const iframe = active as HTMLIFrameElement;
-                // console.log('当前聚焦的iframe id:', iframe.id);
-            }
-        }, true); // 使用捕获阶段，能捕获到 iframe 的聚焦
-
-        // 2. 找到目标 iframe DOM
+        // 1. 找到目标 iframe DOM
         let iframe: HTMLIFrameElement | null = null;
         const active = document.activeElement;
         if (active && active.tagName === 'IFRAME') {
             iframe = active as HTMLIFrameElement;
         }
-        let innerBody = null;
-        if (iframe && iframe.contentDocument) {
-            innerBody = iframe.contentDocument.querySelector('body.view');
+        
+        if (!iframe || !iframe.contentDocument || !iframe.contentWindow) {
+            console.log('未找到目标iframe或无法访问iframe内容');
+            return;
         }
-        if (!innerBody) return;
 
-        // 3. 注入内容（直接读取剪切板）
+        // 2. 注入内容（直接读取剪切板）
         navigator.clipboard.readText().then(content => {
             if (!content) return;
-            const newElement = contentToNode(content);
-
-            innerBody.appendChild(newElement);
+            
+            // 使用模拟输入方式在光标位置插入
+            simulateTextInput(iframe!.contentDocument!, iframe!.contentWindow!, content);
+        }).catch(error => {
+            console.log('无法读取剪贴板:', error);
         });
+    }
+
+    // 模拟文本输入函数
+    function simulateTextInput(doc: Document, win: Window, content: string) {
+        try {
+            // 方法1: 使用 Selection API 在光标位置插入
+            const selection = win.getSelection();
+            if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                
+                // 删除选中的内容(如果有)
+                range.deleteContents();
+                
+                // 在光标位置插入文本节点
+                const textNode = doc.createTextNode(content);
+                range.insertNode(textNode);
+                
+                // 移动光标到插入内容之后
+                range.setStartAfter(textNode);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                
+                // 触发input事件通知编辑器内容已改变
+                try {
+                    const inputEvent = new InputEvent('input', {
+                        bubbles: true,
+                        cancelable: true,
+                        inputType: 'insertText',
+                        data: content
+                    });
+                    
+                    // 向可编辑元素触发事件
+                    const editableElement = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE 
+                        ? range.commonAncestorContainer as Element
+                        : range.commonAncestorContainer.parentElement;
+                    
+                    if (editableElement) {
+                        editableElement.dispatchEvent(inputEvent);
+                    }
+                } catch (eventError) {
+                    console.log('触发input事件失败:', eventError);
+                }
+                
+                // console.log('使用 Selection API 成功');
+                return;
+            }
+
+            // 方法2: 如果没有选区，尝试在可编辑元素中创建选区并插入
+            const editableElement = doc.querySelector('body.view') || 
+                                   doc.querySelector('[contenteditable="true"]') || 
+                                   doc.body;
+            
+            if (editableElement) {
+                // 创建新的选区在元素末尾
+                const newRange = doc.createRange();
+                newRange.selectNodeContents(editableElement);
+                newRange.collapse(false); // 折叠到末尾
+                
+                const newSelection = win.getSelection();
+                if (newSelection) {
+                    newSelection.removeAllRanges();
+                    newSelection.addRange(newRange);
+                    
+                    // 递归调用，现在应该有选区了
+                    simulateTextInput(doc, win, content);
+                    return;
+                }
+            }
+
+            // 方法3: 回退到DOM操作 (在编辑器body末尾追加)
+            console.log('回退到DOM操作方式');
+            const fallbackElement = doc.querySelector('body.view') || doc.body;
+            if (fallbackElement) {
+                const newElement = contentToNode(content);
+                fallbackElement.appendChild(newElement);
+                
+                // 尝试触发change事件
+                try {
+                    const inputEvent = new Event('input', { bubbles: true });
+                    fallbackElement.dispatchEvent(inputEvent);
+                    
+                    const changeEvent = new Event('change', { bubbles: true });
+                    fallbackElement.dispatchEvent(changeEvent);
+                } catch (eventError) {
+                    console.log('触发事件失败:', eventError);
+                }
+            }
+        } catch (error) {
+            console.log('模拟输入失败:', error);
+        }
     }
 
     function contentToNode(content: string): Node {
@@ -117,14 +201,10 @@
                             if (clipboardData) {
                                 const content = clipboardData.getData('text/plain');
                                 if (content) {
-                                    // 直接处理粘贴内容，不需要再调用 navigator.clipboard.readText()
+                                    // 使用模拟输入方式在光标位置插入
                                     const iframe = document.activeElement as HTMLIFrameElement;
-                                    if (iframe && iframe.contentDocument) {
-                                        const innerBody = iframe.contentDocument.querySelector('body.view');
-                                        if (innerBody) {
-                                            const newElement = contentToNode(content);
-                                            innerBody.appendChild(newElement);
-                                        }
+                                    if (iframe && iframe.contentDocument && iframe.contentWindow) {
+                                        simulateTextInput(iframe.contentDocument, iframe.contentWindow, content);
                                     }
                                 }
                             } else {
