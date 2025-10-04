@@ -20,18 +20,15 @@
 
 ## 使用方法
 
-1. 将 Release 中的 `xuexitong-paste-injector.user.js` 中的脚本直接复制或者导入文件到 TamperMonkey 中
+1. 下载并安装 [TamperMonkey](https://www.tampermonkey.net/) 插件
 2. 开启浏览器的扩展管理中的开发者模式
-3. 刷新页面脚本即可生效
+3. 单击 Release 中的 `xuexitong-paste-injector.user.js` 脚本触发插件的自动导入功能，将脚本导入到 TamperMonkey 中（同样的，你也可以手动导入）
+4. 刷新页面脚本即可生效
 
 ## 构建方法
 
 1. 使用`npm install`或者`pnpm install`来获取依赖
 2. 使用`npm run build`或者`pnpm run build`来进行构建
-
-## 未解决的问题
-
-- [x] 无法通过 UEditor 自身的 API 或者键盘模拟输入向光标位置注入文字，导致文字只能在结尾追加
 
 ## 开源协议
 
