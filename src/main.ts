@@ -9,8 +9,8 @@
         window.confirm = function () { return true; };
         window.prompt = function () { return null; };
 
-        // 拦截所有可能的复制相关事件
-        ['copy', 'cut', 'paste', 'selectstart', 'contextmenu'].forEach(eventType => {
+        // 只拦截非关键的复制相关事件，保留 paste 和 contextmenu 让编辑器正常工作
+        ['copy', 'cut', 'selectstart'].forEach(eventType => {
             document.addEventListener(eventType, function (e) {
                 e.stopImmediatePropagation();
             }, true);
@@ -98,9 +98,37 @@
 
                         // 监听 iframe 的 window
                         iframe.contentWindow?.addEventListener('keydown', function (e) {
-                            // console.log(`iframe ${index} window keydown:`, e.key, e.ctrlKey);
+                            console.log(`iframe ${index} window keydown:`, e.key, e.ctrlKey);
                             if (e.ctrlKey && (e.key === 'v' || e.key === 'V')) {
                                 // console.log(`iframe ${index} window 检测到 Ctrl+V`);
+                                e.preventDefault();
+                                injectContent();
+                            }
+                        }, true);
+
+                        // 监听 paste 事件，支持鼠标右键粘贴
+                        iframe.contentWindow?.addEventListener('paste', function (e) {
+                            console.log(`iframe ${index} window 检测到 paste 事件`);
+                            e.preventDefault();
+                            e.stopImmediatePropagation();
+                            
+                            // 尝试从事件中获取剪贴板数据
+                            const clipboardData = e.clipboardData || (window as any).clipboardData;
+                            if (clipboardData) {
+                                const content = clipboardData.getData('text/plain');
+                                if (content) {
+                                    // 直接处理粘贴内容，不需要再调用 navigator.clipboard.readText()
+                                    const iframe = document.activeElement as HTMLIFrameElement;
+                                    if (iframe && iframe.contentDocument) {
+                                        const innerBody = iframe.contentDocument.querySelector('body.view');
+                                        if (innerBody) {
+                                            const newElement = contentToNode(content);
+                                            innerBody.appendChild(newElement);
+                                        }
+                                    }
+                                }
+                            } else {
+                                // 回退到使用 navigator.clipboard API
                                 injectContent();
                             }
                         }, true);
