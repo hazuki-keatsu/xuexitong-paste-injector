@@ -1,17 +1,17 @@
 (function () {
     'use strict';
-    
+
     console.log('超星学习通粘贴注入器已启动', window.location.href);
 
     // 禁用各种弹窗函数
     function disablePopups() {
-        window.alert = function() {};
-        window.confirm = function() { return true; };
-        window.prompt = function() { return null; };
-        
+        window.alert = function () { };
+        window.confirm = function () { return true; };
+        window.prompt = function () { return null; };
+
         // 拦截所有可能的复制相关事件
         ['copy', 'cut', 'paste', 'selectstart', 'contextmenu'].forEach(eventType => {
-            document.addEventListener(eventType, function(e) {
+            document.addEventListener(eventType, function (e) {
                 e.stopImmediatePropagation();
             }, true);
         });
@@ -46,27 +46,56 @@
         // 3. 注入内容（直接读取剪切板）
         navigator.clipboard.readText().then(content => {
             if (!content) return;
-            const newP = innerBody.ownerDocument.createElement('p');
-            newP.textContent = content;
-            innerBody.appendChild(newP);
+            const newElement = contentToNode(content);
+
+            innerBody.appendChild(newElement);
         });
+    }
+
+    function contentToNode(content: string): Node {
+        const frag = document.createDocumentFragment();
+
+        if (!content) return frag;
+
+        // Normalize CRLF to LF
+        const normalized = content.replace(/\r\n?/g, '\n');
+
+        // Split into paragraphs by one or more blank lines (i.e. \n followed by optional spaces and another \n)
+        const paragraphs = normalized.split(/\n\s*\n/).map(p => p.trim()).filter(p => p.length > 0);
+
+        paragraphs.forEach(paragraphText => {
+            const p = document.createElement('p');
+
+            // Preserve single newlines inside a paragraph as <br>
+            const lines = paragraphText.split('\n');
+            lines.forEach((line, idx) => {
+                p.appendChild(document.createTextNode(line));
+                if (idx < lines.length - 1) {
+                    p.appendChild(document.createElement('br'));
+                }
+            });
+
+            frag.appendChild(p);
+        });
+
+        return frag;
     }
 
     // 监听 UEditor iframe 内部的键盘事件
     function setupUEditorListeners() {
         // console.log('设置 UEditor 监听器');
-        
+
         // 查找所有 iframe（UEditor 通常在 iframe 中）
         function findAndSetupIframes() {
             const iframes = document.querySelectorAll('iframe');
             // console.log('找到 iframe 数量:', iframes.length);
-            
+
             iframes.forEach((iframe, index) => {
                 try {
                     const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
                     if (iframeDoc) {
                         // console.log(`为 iframe ${index} 设置监听器`);
-                        
+
                         // 监听 iframe 的 window
                         iframe.contentWindow?.addEventListener('keydown', function (e) {
                             // console.log(`iframe ${index} window keydown:`, e.key, e.ctrlKey);
@@ -81,11 +110,11 @@
                 }
             });
         }
-        
+
         // 立即检查
         findAndSetupIframes();
     }
-    
+
     // 设置监听器
     window.addEventListener("load", setupUEditorListeners);
 })();
