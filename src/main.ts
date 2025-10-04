@@ -176,9 +176,28 @@
             // 处理段落内的单次换行
             const lines = paragraphText.split('\n');
             lines.forEach((line, lIndex) => {
-                // 添加文本节点
                 if (line.length > 0) {
-                    frag.appendChild(document.createTextNode(line));
+                    // 将普通空格和制表符转换为HTML实体
+                    const processedLine = line
+                        .replace(/&/g, '&amp;')     // 先转义&符号，避免冲突
+                        .replace(/</g, '&lt;')      // 转义<符号
+                        .replace(/>/g, '&gt;')      // 转义>符号
+                        .replace(/ /g, '&nbsp;')    // 将所有空格转为不间断空格
+                        .replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;&ZeroWidthSpace;');    // 将制表符转为4个不间断空格+零宽空格
+
+                    // 检查是否有转换后的HTML实体
+                    if (processedLine !== line) {
+                        // 有转换，使用innerHTML解析HTML实体
+                        const span = document.createElement('span');
+                        span.innerHTML = processedLine;
+                        // 将span的所有子节点添加到fragment
+                        while (span.firstChild) {
+                            frag.appendChild(span.firstChild);
+                        }
+                    } else {
+                        // 没有需要转换的字符，直接创建文本节点
+                        frag.appendChild(document.createTextNode(line));
+                    }
                 }
 
                 // 如果不是最后一行，添加<br>
